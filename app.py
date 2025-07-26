@@ -2,8 +2,10 @@ import streamlit as st
 from docx import Document
 from datetime import datetime
 import io
+import smtplib
+from email.message import EmailMessage
 
-# Função para carregar o modelo e substituir os dados
+# Função para gerar o contrato preenchido
 def gerar_contrato(dados):
     doc = Document("Contrato_Modelo_Com_Placeholders_Novo.docx")
 
@@ -26,6 +28,27 @@ def gerar_contrato(dados):
     doc.save(output)
     output.seek(0)
     return output
+
+# Função para enviar o contrato por e-mail
+def enviar_email(arquivo, nome_cliente):
+    email_de = "contratosguilherme.enviador@gmail.com"
+    senha = "quprkjbbttuyxwnv"
+    email_para = "contratosguilherme.enviador@gmail.com"
+
+    msg = EmailMessage()
+    msg["Subject"] = f"Contrato de Honorários - {nome_cliente}"
+    msg["From"] = email_de
+    msg["To"] = email_para
+    msg.set_content(f"Segue em anexo o contrato gerado para {nome_cliente}.")
+
+    msg.add_attachment(arquivo.getvalue(),
+                       maintype='application',
+                       subtype='vnd.openxmlformats-officedocument.wordprocessingml.document',
+                       filename="Contrato_Gerado.docx")
+
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        smtp.login(email_de, senha)
+        smtp.send_message(msg)
 
 st.title("Gerador de Contrato de Honorários")
 
@@ -56,5 +79,6 @@ dados["{{TABELA_PARCELAS}}"] = "\n".join(parcelas)
 # Geração do contrato
 if st.button("Gerar Contrato"):
     contrato = gerar_contrato(dados)
-    st.success("Contrato gerado com sucesso!")
+    enviar_email(contrato, dados["{{CONTRATANTE_NOME}}"])
+    st.success("Contrato gerado e enviado por e-mail com sucesso!")
     st.download_button("Clique para baixar o contrato Word", data=contrato, file_name="Contrato_Gerado.docx")
